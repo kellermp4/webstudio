@@ -56,6 +56,19 @@ describe("Parse intermediate or invalid value without math evaluation", () => {
     }
   });
 
+  test("fallback to % if px is not supported", () => {
+    const result = parseIntermediateOrInvalidValue("fontStretch", {
+      type: "intermediate",
+      value: "10",
+    });
+
+    expect(result).toEqual({
+      type: "unit",
+      value: 10,
+      unit: "%",
+    });
+  });
+
   test("switch on new unit if previous not known", () => {
     for (const propery of properties) {
       const result = parseIntermediateOrInvalidValue(propery, {

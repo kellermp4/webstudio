@@ -1,5 +1,5 @@
+import type { AnimationAction } from "@webstudio-is/sdk";
 import { forwardRef, type ElementRef } from "react";
-import type { AnimationAction } from "./shared/animation-types";
 
 type ScrollProps = {
   debug?: boolean;
