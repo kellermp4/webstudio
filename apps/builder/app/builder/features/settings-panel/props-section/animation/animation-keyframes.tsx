@@ -3,15 +3,16 @@ import {
   toValue,
   type StyleProperty,
 } from "@webstudio-is/css-engine";
-import { Box, Grid } from "@webstudio-is/design-system";
+import { Box, Grid, Label, Separator } from "@webstudio-is/design-system";
 import type { AnimationKeyframe } from "@webstudio-is/sdk";
 import { colord } from "colord";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ColorPopover } from "~/builder/features/style-panel/shared/color-picker";
 import {
   CssValueInput,
   type IntermediateStyleValue,
 } from "~/builder/features/style-panel/shared/css-value-input";
+import { useIds } from "~/shared/form-utils";
 
 const AdvancedPropertyValue = ({
   property,
@@ -88,9 +89,11 @@ const unitOptions = [
 ];
 
 const OffsetInput = ({
+  id,
   value,
   onChange,
 }: {
+  id: string;
   value: number | undefined;
   onChange: (value: number | undefined) => void;
 }) => {
@@ -100,29 +103,41 @@ const OffsetInput = ({
 
   return (
     <CssValueInput
+      id={id}
+      placeholder="auto"
       getOptions={() => []}
       unitOptions={unitOptions}
-      intermediateValue={
-        intermediateValue ?? {
-          type: "intermediate",
-          value: "",
-          unit: "%",
-        }
-      }
+      intermediateValue={intermediateValue}
       styleSource="default"
       /* same as offset has 0 - 100% */
       property={"fontStretch"}
       value={
-        value
+        value !== undefined
           ? {
               type: "unit",
-              value: Math.round(value * 100),
+              value: Math.round(value * 1000) / 10,
               unit: "%",
             }
           : undefined
       }
       onChange={(styleValue) => {
-        setIntermediateValue(styleValue);
+        if (styleValue === undefined) {
+          setIntermediateValue(styleValue);
+          return;
+        }
+
+        const clampedStyleValue = { ...styleValue };
+        if (
+          clampedStyleValue.type === "unit" &&
+          clampedStyleValue.unit === "%"
+        ) {
+          clampedStyleValue.value = Math.min(
+            100,
+            Math.max(0, clampedStyleValue.value)
+          );
+        }
+
+        setIntermediateValue(clampedStyleValue);
       }}
       onHighlight={(_styleValue) => {
         /* @todo: think about preview */
@@ -131,7 +146,7 @@ const OffsetInput = ({
         setIntermediateValue(undefined);
 
         if (event.value.type === "unit" && event.value.unit === "%") {
-          onChange(event.value.value / 100);
+          onChange(Math.min(100, Math.max(0, event.value.value)) / 100);
           return;
         }
 
@@ -153,13 +168,22 @@ const OffsetInput = ({
 
 const Keyframe = ({
   value,
+  onChange,
 }: {
   value: AnimationKeyframe;
   onChange: (value: AnimationKeyframe) => void;
 }) => {
+  const ids = useIds(["offset"]);
   return (
-    <Grid>
-      <OffsetInput value={value.offset} onChange={() => {}} />
+    <Grid gap={1} css={{ gridTemplateColumns: "1fr 1fr" }}>
+      <Label htmlFor={ids.offset}>Offset</Label>
+      <OffsetInput
+        id={ids.offset}
+        value={value.offset}
+        onChange={(offset) => {
+          onChange({ ...value, offset });
+        }}
+      />
     </Grid>
   );
 };
@@ -174,16 +198,20 @@ export const Keyframes = ({
   return (
     <Grid gap={1}>
       <Box>KEYFRAMES</Box>
+
       {keyframes.map((value, index) => (
-        <Keyframe
-          key={index}
-          value={value}
-          onChange={(newValue) => {
-            const newValues = [...keyframes];
-            newValues[index] = newValue;
-            onChange(newValues);
-          }}
-        />
+        <Fragment key={index}>
+          <Separator />
+          <Keyframe
+            key={index}
+            value={value}
+            onChange={(newValue) => {
+              const newValues = [...keyframes];
+              newValues[index] = newValue;
+              onChange(newValues);
+            }}
+          />
+        </Fragment>
       ))}
     </Grid>
   );

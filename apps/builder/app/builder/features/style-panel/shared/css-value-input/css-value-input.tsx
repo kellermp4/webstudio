@@ -90,7 +90,7 @@ const useScrub = ({
   onAbort,
   shouldHandleEvent,
 }: {
-  defaultUnit: Unit;
+  defaultUnit: Unit | undefined;
   value: CssValueInputValue;
   intermediateValue: CssValueInputValue | undefined;
   property: StyleProperty;
@@ -250,7 +250,13 @@ const useScrub = ({
       },
       shouldHandleEvent,
     });
-  }, [shouldHandleEvent, property, updateIntermediateValue, onAbortStable]);
+  }, [
+    shouldHandleEvent,
+    property,
+    updateIntermediateValue,
+    onAbortStable,
+    defaultUnit,
+  ]);
 
   return [scrubRef, inputRef];
 };
@@ -314,6 +320,7 @@ type CssValueInputProps = Pick<
   showSuffix?: boolean;
   unitOptions?: UnitOption[];
   id?: string;
+  placeholder?: string;
 };
 
 const initialValue: IntermediateStyleValue = {
@@ -477,6 +484,7 @@ export const CssValueInput = ({
   variant,
   text,
   unitOptions,
+  placeholder,
   ...props
 }: CssValueInputProps) => {
   const value = props.intermediateValue ?? props.value ?? initialValue;
@@ -487,6 +495,9 @@ export const CssValueInput = ({
   const [highlightedValue, setHighlighedValue] = useState<
     StyleValue | undefined
   >();
+
+  const defaultUnit =
+    unitOptions?.[0]?.type === "unit" ? unitOptions[0].id : undefined;
 
   const onChange = (input: string | undefined) => {
     if (input === undefined) {
@@ -533,7 +544,11 @@ export const CssValueInput = ({
       return;
     }
 
-    const parsedValue = parseIntermediateOrInvalidValue(property, value);
+    const parsedValue = parseIntermediateOrInvalidValue(
+      property,
+      value,
+      defaultUnit
+    );
 
     if (parsedValue.type === "invalid") {
       props.onChange(parsedValue);
@@ -691,8 +706,7 @@ export const CssValueInput = ({
   }, []);
 
   const [scrubRef, inputRef] = useScrub({
-    defaultUnit:
-      unitOptions?.[0]?.type === "unit" ? unitOptions[0].id : "number",
+    defaultUnit,
     value,
     property,
     intermediateValue: props.intermediateValue,
@@ -949,6 +963,7 @@ export const CssValueInput = ({
             disabled={disabled}
             aria-disabled={ariaDisabled}
             fieldSizing={fieldSizing}
+            placeholder={placeholder}
             {...inputProps}
             {...autoScrollProps}
             value={getInputValue()}
