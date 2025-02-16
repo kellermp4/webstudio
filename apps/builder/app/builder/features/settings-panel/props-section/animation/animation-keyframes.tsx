@@ -3,7 +3,14 @@ import {
   toValue,
   type StyleProperty,
 } from "@webstudio-is/css-engine";
-import { Box, Grid, Label, Separator } from "@webstudio-is/design-system";
+import {
+  Text,
+  Grid,
+  IconButton,
+  Label,
+  Separator,
+} from "@webstudio-is/design-system";
+import { PlusIcon } from "@webstudio-is/icons";
 import type { AnimationKeyframe } from "@webstudio-is/sdk";
 import { colord } from "colord";
 import { Fragment, useState } from "react";
@@ -175,7 +182,7 @@ const Keyframe = ({
 }) => {
   const ids = useIds(["offset"]);
   return (
-    <Grid gap={1} css={{ gridTemplateColumns: "1fr 1fr" }}>
+    <Grid gap={1} align={"center"} css={{ gridTemplateColumns: "1fr 1fr" }}>
       <Label htmlFor={ids.offset}>Offset</Label>
       <OffsetInput
         id={ids.offset}
@@ -195,9 +202,18 @@ export const Keyframes = ({
   value: AnimationKeyframe[];
   onChange: (value: AnimationKeyframe[]) => void;
 }) => {
+  const ids = useIds(["addKeyframe"]);
+
   return (
-    <Grid gap={1}>
-      <Box>KEYFRAMES</Box>
+    <Grid gap={2}>
+      <Grid gap={1} align={"center"} css={{ gridTemplateColumns: "1fr auto" }}>
+        <Label htmlFor={ids.addKeyframe}>
+          <Text variant={"titles"}>Keyframes</Text>
+        </Label>
+        <IconButton id={ids.addKeyframe}>
+          <PlusIcon />
+        </IconButton>
+      </Grid>
 
       {keyframes.map((value, index) => (
         <Fragment key={index}>
