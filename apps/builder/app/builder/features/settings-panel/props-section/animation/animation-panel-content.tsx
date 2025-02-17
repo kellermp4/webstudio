@@ -124,12 +124,29 @@ const RangeValueInput = ({
   );
 };
 
+const fillModeDescriptions: Record<
+  NonNullable<ViewAnimation["timing"]["fill"]>,
+  string
+> = {
+  none: "No animation is applied before or after the active period",
+  forwards:
+    "The animation state is applied after the active period. Prefered for Out Animations",
+  backwards:
+    "The animation state is applied before the active period. Prefered for In Animations",
+  both: "The animation state is applied before and after the active period",
+};
+const fillModeNames = Object.keys(fillModeDescriptions) as NonNullable<
+  ViewAnimation["timing"]["fill"]
+>[];
+
 export const AnimationPanelContent = ({ onChange, value, type }: Props) => {
   const fieldIds = useIds([
     "rangeStartName",
     "rangeStartValue",
     "rangeEndName",
     "rangeEndValue",
+    "fill",
+    "easing",
   ] as const);
 
   const timelineRangeDescriptions =
@@ -150,10 +167,41 @@ export const AnimationPanelContent = ({ onChange, value, type }: Props) => {
     toast.error("Animation schema is incompatible, try fix");
   };
 
-  // console.log(value);
-
   return (
     <Grid gap="2" css={{ padding: theme.panel.padding }}>
+      <Grid gap={1} align={"center"} css={{ gridTemplateColumns: "1fr 1fr" }}>
+        <Label htmlFor={fieldIds.fill}>Fill Mode</Label>
+        <Label htmlFor={fieldIds.easing}>Easing</Label>
+        <Select
+          id={fieldIds.fill}
+          options={fillModeNames}
+          getLabel={(fillModeName: string) => toPascalCase(fillModeName)}
+          value={value.timing.fill ?? fillModeNames[0]}
+          getDescription={(fillModeName: string) => (
+            <Box
+              css={{
+                width: theme.spacing[28],
+              }}
+            >
+              {
+                fillModeDescriptions[
+                  fillModeName as keyof typeof fillModeDescriptions
+                ]
+              }
+            </Box>
+          )}
+          onChange={(fillModeName) => {
+            handleChange({
+              ...value,
+              timing: {
+                ...value.timing,
+                fill: fillModeName,
+              },
+            });
+          }}
+        />
+        <Box>E</Box>
+      </Grid>
       <Grid gap={1} align={"center"} css={{ gridTemplateColumns: "1fr 1fr" }}>
         <Label htmlFor={fieldIds.rangeStartName}>Range Start</Label>
         <Label htmlFor={fieldIds.rangeStartValue}>Value</Label>
