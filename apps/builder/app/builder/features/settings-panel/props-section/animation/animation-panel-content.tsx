@@ -27,12 +27,29 @@ import {
 import { toValue, type StyleValue } from "@webstudio-is/css-engine";
 import { useState } from "react";
 import { Keyframes } from "./animation-keyframes";
+import { styleConfigByName } from "~/builder/features/style-panel/shared/configs";
 
 type Props = {
   type: "scroll" | "view";
   value: ScrollAnimation | ViewAnimation;
   onChange: (value: ScrollAnimation | ViewAnimation) => void;
 };
+
+const fillModeDescriptions: Record<
+  NonNullable<ViewAnimation["timing"]["fill"]>,
+  string
+> = {
+  none: "No animation is applied before or after the active period",
+  forwards:
+    "The animation state is applied after the active period. Prefered for Out Animations",
+  backwards:
+    "The animation state is applied before the active period. Prefered for In Animations",
+  both: "The animation state is applied before and after the active period",
+};
+
+const fillModeNames = Object.keys(fillModeDescriptions) as NonNullable<
+  ViewAnimation["timing"]["fill"]
+>[];
 
 /**
  * https://developer.mozilla.org/en-US/docs/Web/CSS/animation-range-start
@@ -124,20 +141,58 @@ const RangeValueInput = ({
   );
 };
 
-const fillModeDescriptions: Record<
-  NonNullable<ViewAnimation["timing"]["fill"]>,
-  string
-> = {
-  none: "No animation is applied before or after the active period",
-  forwards:
-    "The animation state is applied after the active period. Prefered for Out Animations",
-  backwards:
-    "The animation state is applied before the active period. Prefered for In Animations",
-  both: "The animation state is applied before and after the active period",
+const EasingInput = ({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: string | undefined;
+  onChange: (value: string | undefined) => void;
+}) => {
+  const [intermediateValue, setIntermediateValue] = useState<
+    StyleValue | IntermediateStyleValue
+  >();
+
+  const property = "animationTimingFunction";
+
+  return (
+    <CssValueInput
+      id={id}
+      styleSource="default"
+      value={
+        value === undefined
+          ? { type: "keyword", value: "ease" }
+          : { type: "unparsed", value }
+      }
+      getOptions={() => [
+        ...styleConfigByName(property).items.map((item) => ({
+          type: "keyword" as const,
+          value: item.name,
+        })),
+      ]}
+      property={property}
+      intermediateValue={intermediateValue}
+      onChange={(styleValue) => {
+        setIntermediateValue(styleValue);
+        /* @todo: allow to change some ephemeral property to see the result in action */
+      }}
+      onHighlight={() => {
+        /* Nothing to Highlight */
+      }}
+      onChangeComplete={(event) => {
+        onChange(toValue(event.value));
+        setIntermediateValue(undefined);
+      }}
+      onAbort={() => {
+        /* @todo: allow to change some ephemeral property to see the result in action */
+      }}
+      onReset={() => {
+        setIntermediateValue(undefined);
+      }}
+    />
+  );
 };
-const fillModeNames = Object.keys(fillModeDescriptions) as NonNullable<
-  ViewAnimation["timing"]["fill"]
->[];
 
 export const AnimationPanelContent = ({ onChange, value, type }: Props) => {
   const fieldIds = useIds([
@@ -200,7 +255,19 @@ export const AnimationPanelContent = ({ onChange, value, type }: Props) => {
             });
           }}
         />
-        <Box>E</Box>
+        <EasingInput
+          id={fieldIds.easing}
+          value={value.timing.easing}
+          onChange={(easing) => {
+            handleChange({
+              ...value,
+              timing: {
+                ...value.timing,
+                easing,
+              },
+            });
+          }}
+        />
       </Grid>
       <Grid gap={1} align={"center"} css={{ gridTemplateColumns: "1fr 1fr" }}>
         <Label htmlFor={fieldIds.rangeStartName}>Range Start</Label>
