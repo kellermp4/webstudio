@@ -1,91 +1,22 @@
-import {
-  StyleValue,
-  toValue,
-  type StyleProperty,
-} from "@webstudio-is/css-engine";
+import { parseCss } from "@webstudio-is/css-data";
+import { StyleValue, toValue } from "@webstudio-is/css-engine";
 import {
   Text,
   Grid,
   IconButton,
   Label,
   Separator,
+  Tooltip,
 } from "@webstudio-is/design-system";
-import { PlusIcon } from "@webstudio-is/icons";
+import { MinusIcon, PlusIcon } from "@webstudio-is/icons";
 import type { AnimationKeyframe } from "@webstudio-is/sdk";
-import { colord } from "colord";
-import { Fragment, useState } from "react";
-import { ColorPopover } from "~/builder/features/style-panel/shared/color-picker";
+import { Fragment, useMemo, useState } from "react";
 import {
   CssValueInput,
   type IntermediateStyleValue,
 } from "~/builder/features/style-panel/shared/css-value-input";
+import { CodeEditor } from "~/builder/shared/code-editor";
 import { useIds } from "~/shared/form-utils";
-
-const AdvancedPropertyValue = ({
-  property,
-  onChangeComplete,
-  value,
-}: {
-  autoFocus?: boolean;
-  property: StyleProperty;
-  value: StyleValue;
-  onChangeComplete: (styleValue: StyleValue | undefined) => void;
-}) => {
-  const isColor = colord(toValue(value)).isValid();
-  const [intermediateValue, setIntermediateValue] = useState<
-    StyleValue | IntermediateStyleValue
-  >();
-
-  return (
-    <CssValueInput
-      variant="chromeless"
-      text="mono"
-      fieldSizing="content"
-      prefix={
-        isColor && (
-          <ColorPopover
-            value={value}
-            onChange={() => {
-              /*
-            @todo make it changing online
-            */
-            }}
-            onChangeComplete={(styleValue) => {
-              onChangeComplete(styleValue);
-            }}
-          />
-        )
-      }
-      getOptions={() => [
-        /*
-          @todo: think about some usefull animation properties and values
-          like opacity: 0, opacity: 1, scale: 1 1, rotate, translate.
-        */
-      ]}
-      styleSource="default"
-      property={property}
-      intermediateValue={intermediateValue}
-      value={value}
-      onChange={(styleValue) => {
-        setIntermediateValue(styleValue);
-      }}
-      onHighlight={(_styleValue) => {
-        /* @todo: think about preview */
-      }}
-      onChangeComplete={(event) => {
-        setIntermediateValue(undefined);
-        onChangeComplete?.(event.value);
-      }}
-      onAbort={() => {
-        /* @todo: allow to change some ephemeral property to see the result in action */
-      }}
-      onReset={() => {
-        setIntermediateValue(undefined);
-        onChangeComplete?.(undefined);
-      }}
-    />
-  );
-};
 
 const unitOptions = [
   {
@@ -178,20 +109,60 @@ const Keyframe = ({
   onChange,
 }: {
   value: AnimationKeyframe;
-  onChange: (value: AnimationKeyframe) => void;
+  onChange: (value: AnimationKeyframe | undefined) => void;
 }) => {
   const ids = useIds(["offset"]);
+
+  const cssProperties = useMemo(() => {
+    let result = ``;
+    for (const [property, style] of Object.entries(value.styles)) {
+      result = `${result}${property}: ${toValue(style)};\n`;
+    }
+    return result;
+  }, [value.styles]);
+
   return (
-    <Grid gap={1} align={"center"} css={{ gridTemplateColumns: "1fr 1fr" }}>
-      <Label htmlFor={ids.offset}>Offset</Label>
-      <OffsetInput
-        id={ids.offset}
-        value={value.offset}
-        onChange={(offset) => {
-          onChange({ ...value, offset });
-        }}
-      />
-    </Grid>
+    <>
+      <Grid
+        gap={1}
+        align={"center"}
+        css={{ gridTemplateColumns: "1fr 1fr auto" }}
+      >
+        <Label htmlFor={ids.offset}>Offset</Label>
+        <OffsetInput
+          id={ids.offset}
+          value={value.offset}
+          onChange={(offset) => {
+            onChange({ ...value, offset });
+          }}
+        />
+        <Tooltip content="Remove keyframe">
+          <IconButton onClick={() => onChange(undefined)}>
+            <MinusIcon />
+          </IconButton>
+        </Tooltip>
+      </Grid>
+      <Grid>
+        <CodeEditor
+          lang="css-properties"
+          size="keyframe"
+          value={cssProperties}
+          onChange={() => {
+            /* do nothing */
+          }}
+          onChangeComplete={(cssText) => {
+            const parsedStyles = parseCss(`selector{${cssText}}`);
+            onChange({
+              ...value,
+              styles: parsedStyles.reduce(
+                (r, { property, value }) => ({ ...r, [property]: value }),
+                {}
+              ),
+            });
+          }}
+        />
+      </Grid>
+    </>
   );
 };
 
@@ -210,7 +181,12 @@ export const Keyframes = ({
         <Label htmlFor={ids.addKeyframe}>
           <Text variant={"titles"}>Keyframes</Text>
         </Label>
-        <IconButton id={ids.addKeyframe}>
+        <IconButton
+          id={ids.addKeyframe}
+          onClick={() =>
+            onChange([...keyframes, { offset: undefined, styles: {} }])
+          }
+        >
           <PlusIcon />
         </IconButton>
       </Grid>
@@ -222,6 +198,13 @@ export const Keyframes = ({
             key={index}
             value={value}
             onChange={(newValue) => {
+              if (newValue === undefined) {
+                const newValues = [...keyframes];
+                newValues.splice(index, 1);
+                onChange(newValues);
+                return;
+              }
+
               const newValues = [...keyframes];
               newValues[index] = newValue;
               onChange(newValues);
