@@ -9,6 +9,7 @@ export const newScrollAnimation: ScrollAnimation = {
     rangeStart: ["start", { type: "unit", value: 0, unit: "px" }],
     rangeEnd: ["end", { type: "unit", value: 0, unit: "px" }],
     fill: "backwards",
+    easing: "linear",
   },
   keyframes: [
     {
@@ -26,6 +27,7 @@ export const newFadeInScrollAnimation: ScrollAnimation = {
     rangeStart: ["start", { type: "unit", value: 0, unit: "%" }],
     rangeEnd: ["start", { type: "unit", value: 50, unit: "dvh" }],
     fill: "backwards",
+    easing: "linear",
   },
   keyframes: [
     {
@@ -45,6 +47,7 @@ export const newFadeOutScrollAnimation: ScrollAnimation = {
     rangeStart: ["end", { type: "unit", value: 50, unit: "dvh" }],
     rangeEnd: ["end", { type: "unit", value: 0, unit: "%" }],
     fill: "backwards",
+    easing: "linear",
   },
   keyframes: [
     {

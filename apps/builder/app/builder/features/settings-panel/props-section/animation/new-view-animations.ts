@@ -9,6 +9,7 @@ export const newViewAnimation: ViewAnimation = {
     rangeStart: ["entry", { type: "unit", value: 0, unit: "%" }],
     rangeEnd: ["entry", { type: "unit", value: 100, unit: "%" }],
     fill: "backwards",
+    easing: "linear",
   },
   keyframes: [
     {
@@ -26,6 +27,7 @@ export const newFadeInViewAnimation: ViewAnimation = {
     rangeStart: ["entry", { type: "unit", value: 0, unit: "%" }],
     rangeEnd: ["entry", { type: "unit", value: 100, unit: "%" }],
     fill: "backwards",
+    easing: "linear",
   },
   keyframes: [
     {
@@ -45,6 +47,7 @@ export const newFadeOutViewAnimation: ViewAnimation = {
     rangeStart: ["exit", { type: "unit", value: 0, unit: "%" }],
     rangeEnd: ["exit", { type: "unit", value: 100, unit: "%" }],
     fill: "backwards",
+    easing: "linear",
   },
   keyframes: [
     {
