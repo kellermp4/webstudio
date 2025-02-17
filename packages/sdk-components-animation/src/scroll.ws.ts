@@ -4,10 +4,10 @@ import type { WsComponentMeta, WsComponentPropsMeta } from "@webstudio-is/sdk";
 export const meta: WsComponentMeta = {
   category: "general",
   type: "container",
-  description: "Scroll Animation",
+  description: "Animate Children",
   icon: SlotComponentIcon,
   order: 5,
-  label: "Scroll Animation",
+  label: "Animate Children",
 };
 
 export const propsMeta: WsComponentPropsMeta = {

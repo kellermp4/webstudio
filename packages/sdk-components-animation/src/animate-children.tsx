@@ -7,7 +7,7 @@ type ScrollProps = {
   action: AnimationAction;
 };
 
-export const Scroll = forwardRef<ElementRef<"div">, ScrollProps>(
+export const AnimateChildren = forwardRef<ElementRef<"div">, ScrollProps>(
   ({ debug = false, action, ...props }, ref) => {
     return <div ref={ref} style={{ display: "contents" }} {...props} />;
   }

@@ -1,1 +1,1 @@
-export { propsMeta as Scroll } from "./scroll.ws";
+export { propsMeta as AnimateChildren } from "./scroll.ws";
