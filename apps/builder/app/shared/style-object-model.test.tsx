@@ -10,8 +10,8 @@ import {
   getStyleDeclKey,
 } from "@webstudio-is/sdk";
 import { $, renderData } from "@webstudio-is/template";
-import { parseCss } from "@webstudio-is/css-data";
-import type { StyleValue } from "@webstudio-is/css-engine";
+import { camelCaseProperty, parseCss } from "@webstudio-is/css-data";
+import type { CssProperty, StyleValue } from "@webstudio-is/css-engine";
 import {
   type StyleObjectModel,
   getComputedStyleDecl,
@@ -54,7 +54,7 @@ const createModel = ({
       styleSourceId: selector,
       breakpointId: breakpoint ?? "base",
       state,
-      property,
+      property: camelCaseProperty(property),
       value,
     };
     styles.set(getStyleDeclKey(styleDecl), styleDecl);
@@ -262,14 +262,14 @@ test("support currentcolor keyword", () => {
     getComputedStyleDecl({
       model,
       instanceSelector,
-      property: "borderTopColor",
+      property: "border-top-color",
     }).usedValue
   ).toEqual({ type: "keyword", value: "blue" });
   expect(
     getComputedStyleDecl({
       model,
       instanceSelector,
-      property: "backgroundColor",
+      property: "background-color",
     }).usedValue
   ).toEqual({ type: "keyword", value: "blue" });
 });
@@ -351,7 +351,7 @@ test("compute single custom property without layers", () => {
     getComputedStyleDecl({
       model,
       instanceSelector: ["body"],
-      property: "backgroundImage",
+      property: "background-image",
     }).computedValue
   ).toEqual({
     type: "unparsed",
@@ -374,7 +374,7 @@ test("support custom properties in layers", () => {
     getComputedStyleDecl({
       model,
       instanceSelector: ["body"],
-      property: "backgroundImage",
+      property: "background-image",
     }).computedValue
   ).toEqual({
     type: "layers",
@@ -600,7 +600,7 @@ test("allow multiple usages of the same custom property", () => {
     getComputedStyleDecl({
       model,
       instanceSelector: ["box", "body"],
-      property: "backgroundImage",
+      property: "background-image",
     }).usedValue
   ).toEqual({
     type: "layers",
@@ -753,6 +753,7 @@ test("support html styles", () => {
     jsx: (
       <$.Body ws:id="bodyId" ws:tag="body">
         <$.Span ws:id="spanId" ws:tag="span"></$.Span>
+        <$.Heading ws:id="headingId" ws:tag="h1"></$.Heading>
       </$.Body>
     ),
   });
@@ -764,6 +765,13 @@ test("support html styles", () => {
       property: "display",
     }).usedValue
   ).toEqual({ type: "keyword", value: "block" });
+  expect(
+    getComputedStyleDecl({
+      model,
+      instanceSelector: ["headingId", "bodyId"],
+      property: "margin-top",
+    }).usedValue
+  ).toEqual({ type: "unit", value: 0.67, unit: "em" });
   // tag without browser styles
   expect(
     getComputedStyleDecl({
@@ -946,11 +954,11 @@ test("access cascaded value without resolving", () => {
   ).toEqual({ type: "keyword", value: "initial" });
 });
 
-test("fallback cascaded value to inherited computed value", () => {
+test("fallback cascaded value to initial value", () => {
   const model = createModel({
     css: `
       body {
-        border-top-color: currentcolor;
+        width: 10px;
       }
     `,
     jsx: (
@@ -963,9 +971,32 @@ test("fallback cascaded value to inherited computed value", () => {
     getComputedStyleDecl({
       model,
       instanceSelector: ["box", "body"],
-      property: "borderTopColor",
+      property: "width",
     }).cascadedValue
-  ).toEqual({ type: "keyword", value: "currentColor" });
+  ).toEqual({ type: "keyword", value: "auto" });
+});
+
+test("fallback cascaded value to inherited unresolved value", () => {
+  const model = createModel({
+    css: `
+      body {
+        --color: red;
+        color: var(--color);
+      }
+    `,
+    jsx: (
+      <$.Body ws:id="body" class="body">
+        <$.Box ws:id="box" class="box"></$.Box>
+      </$.Body>
+    ),
+  });
+  expect(
+    getComputedStyleDecl({
+      model,
+      instanceSelector: ["box", "body"],
+      property: "color",
+    }).cascadedValue
+  ).toEqual({ type: "var", value: "color" });
 });
 
 test("work with unknown or invalid properties", () => {
@@ -982,14 +1013,14 @@ test("work with unknown or invalid properties", () => {
     getComputedStyleDecl({
       model,
       instanceSelector,
-      property: "unknownProperty",
+      property: "unknownProperty" as CssProperty,
     }).usedValue
   ).toEqual({ type: "unparsed", value: "[object Object]" });
   expect(
     getComputedStyleDecl({
       model,
       instanceSelector,
-      property: "undefinedProperty",
+      property: "undefinedProperty" as CssProperty,
     }).usedValue
   ).toEqual({ type: "invalid", value: "" });
 });
@@ -1483,7 +1514,7 @@ describe("style value source", () => {
       getComputedStyleDecl({
         model,
         instanceSelector: ["body"],
-        property: "borderTopColor",
+        property: "border-top-color",
       }).source
     ).toEqual({
       name: "local",

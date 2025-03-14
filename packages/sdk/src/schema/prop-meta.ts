@@ -42,6 +42,13 @@ const Text = z.object({
   rows: z.number().optional(),
 });
 
+const Resource = z.object({
+  ...common,
+  control: z.literal("resource"),
+  type: z.literal("resource"),
+  defaultValue: z.string().optional(),
+});
+
 const Code = z.object({
   ...common,
   control: z.literal("code"),
@@ -167,10 +174,18 @@ const TextContent = z.object({
   defaultValue: z.string().optional(),
 });
 
+const AnimationAction = z.object({
+  ...common,
+  control: z.literal("animationAction"),
+  type: z.literal("animationAction"),
+  defaultValue: z.undefined().optional(),
+});
+
 export const PropMeta = z.union([
   Number,
   Range,
   Text,
+  Resource,
   Code,
   CodeText,
   Color,
@@ -187,6 +202,7 @@ export const PropMeta = z.union([
   Date,
   Action,
   TextContent,
+  AnimationAction,
 ]);
 
 export type PropMeta = z.infer<typeof PropMeta>;

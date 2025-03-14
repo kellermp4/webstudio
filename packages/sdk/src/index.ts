@@ -22,3 +22,31 @@ export * from "./expression";
 export * from "./resources-generator";
 export * from "./page-meta-generator";
 export * from "./url-pattern";
+export * from "./css";
+
+export type {
+  AnimationAction,
+  AnimationActionScroll,
+  AnimationActionView,
+  AnimationKeyframe,
+  KeyframeStyles,
+  RangeUnit,
+  RangeUnitValue,
+  ScrollNamedRange,
+  ScrollRangeValue,
+  ViewNamedRange,
+  ViewRangeValue,
+  ScrollAnimation,
+  ViewAnimation,
+  InsetUnitValue,
+} from "./schema/animation-schema";
+
+export {
+  animationActionSchema,
+  scrollAnimationSchema,
+  viewAnimationSchema,
+  rangeUnitValueSchema,
+  animationKeyframeSchema,
+  insetUnitValueSchema,
+  RANGE_UNITS,
+} from "./schema/animation-schema";

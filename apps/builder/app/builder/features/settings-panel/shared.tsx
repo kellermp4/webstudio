@@ -14,11 +14,12 @@ import equal from "fast-deep-equal";
 import {
   decodeDataSourceVariable,
   encodeDataSourceVariable,
+  SYSTEM_VARIABLE_ID,
+  systemParameter,
 } from "@webstudio-is/sdk";
 import type { PropMeta, Prop, Asset } from "@webstudio-is/sdk";
-import { InfoCircleIcon, MinusIcon } from "@webstudio-is/icons";
+import { InfoCircleIcon } from "@webstudio-is/icons";
 import {
-  SmallIconButton,
   Label as BaseLabel,
   useIsTruncated,
   Tooltip,
@@ -38,6 +39,17 @@ import type { BindingVariant } from "~/builder/shared/binding-popover";
 import { humanizeString } from "~/shared/string-utils";
 import { $selectedInstanceKeyWithRoot } from "~/shared/awareness";
 
+export const showAttributeMeta: PropMeta = {
+  label: "Show",
+  required: false,
+  control: "boolean",
+  type: "boolean",
+  defaultValue: true,
+  // If you are changing it, change the other one too
+  description:
+    "Removes the instance from the DOM. Breakpoints have no effect on this setting.",
+};
+
 export type PropValue =
   | { type: "number"; value: number }
   | { type: "string"; value: string }
@@ -47,14 +59,17 @@ export type PropValue =
   | { type: "expression"; value: string }
   | { type: "asset"; value: Asset["id"] }
   | { type: "page"; value: Extract<Prop, { type: "page" }>["value"] }
-  | { type: "action"; value: Extract<Prop, { type: "action" }>["value"] };
+  | { type: "action"; value: Extract<Prop, { type: "action" }>["value"] }
+  | {
+      type: "animationAction";
+      value: Extract<Prop, { type: "animationAction" }>["value"];
+    };
 
 // Weird code is to make type distributive
 // https://www.typescriptlang.org/docs/handbook/2/conditional-types.html#distributive-conditional-types
 type PropMetaByControl<Control> = Control extends string
   ? Extract<PropMeta, { control: Control }>
   : never;
-
 export type ControlProps<Control> = {
   instanceId: string;
   meta: PropMetaByControl<Control>;
@@ -66,12 +81,7 @@ export type ControlProps<Control> = {
   deletable: boolean;
   onChange: (value: PropValue) => void;
   onDelete: () => void;
-  autoFocus?: boolean;
 };
-
-export const RemovePropButton = (props: { onClick: () => void }) => (
-  <SmallIconButton icon={<MinusIcon />} variant="destructive" {...props} />
-);
 
 const SimpleLabel = ({
   children,
@@ -136,7 +146,7 @@ export const Label = ({
 
   return (
     <Flex align="center" css={{ gap: theme.spacing[3], width: "100%" }}>
-      {label}
+      <Box>{label}</Box>
       {readOnly && (
         <Tooltip
           content={
@@ -229,21 +239,14 @@ export const useLocalValue = <Type,>(
 
 type LayoutProps = {
   label: ReturnType<typeof Label>;
-  deletable: boolean;
-  onDelete: () => void;
   children: ReactNode;
 };
 
-export const VerticalLayout = ({
-  label,
-  deletable,
-  onDelete,
-  children,
-}: LayoutProps) => (
+export const VerticalLayout = ({ label, children }: LayoutProps) => (
   <Box>
     <Grid
       css={{
-        gridTemplateColumns: deletable ? `1fr max-content` : `1fr`,
+        gridTemplateColumns: `1fr`,
         justifyItems: "start",
       }}
       align="center"
@@ -251,23 +254,15 @@ export const VerticalLayout = ({
       justify="between"
     >
       {label}
-      {deletable && <RemovePropButton onClick={onDelete} />}
     </Grid>
     <Box css={{ py: theme.spacing[2] }}>{children}</Box>
   </Box>
 );
 
-export const HorizontalLayout = ({
-  label,
-  deletable,
-  onDelete,
-  children,
-}: LayoutProps) => (
+export const HorizontalLayout = ({ label, children }: LayoutProps) => (
   <Grid
     css={{
-      gridTemplateColumns: deletable
-        ? `${theme.spacing[19]} 1fr max-content`
-        : `${theme.spacing[19]} 1fr`,
+      gridTemplateColumns: `${theme.spacing[19]} 1fr`,
       minHeight: theme.spacing[12],
     }}
     align="center"
@@ -275,29 +270,36 @@ export const HorizontalLayout = ({
   >
     {label}
     {children}
-    {deletable && <RemovePropButton onClick={onDelete} />}
   </Grid>
 );
 
-export const ResponsiveLayout = ({
-  label,
-  deletable,
-  onDelete,
-  children,
-}: LayoutProps) => {
-  // more than 9 characters in label trigger ellipsis
-  // might not cover all cases though
-  if (label.props.children.length <= 8) {
-    return (
-      <HorizontalLayout label={label} deletable={deletable} onDelete={onDelete}>
-        {children}
-      </HorizontalLayout>
-    );
-  }
+export const ResponsiveLayout = ({ label, children }: LayoutProps) => {
   return (
-    <VerticalLayout label={label} deletable={deletable} onDelete={onDelete}>
-      {children}
-    </VerticalLayout>
+    <Flex
+      align="center"
+      wrap="wrap"
+      css={{
+        columnGap: theme.spacing[5],
+        rowGap: theme.spacing[3],
+        paddingBlock: theme.spacing[2],
+      }}
+    >
+      <Box
+        css={{
+          // wrap label and input when label is more than ~9 characters
+          flexBasis: `calc(30% - ${theme.spacing[5]} / 2)`,
+          // allow content overflow flex basis
+          minWidth: "auto",
+        }}
+      >
+        {label}
+      </Box>
+      <Box
+        css={{ flexBasis: `calc(70% - ${theme.spacing[5]} / 2)`, flexGrow: 1 }}
+      >
+        {children}
+      </Box>
+    </Flex>
   );
 };
 
@@ -328,7 +330,10 @@ export const $selectedInstanceScope = computed(
     const values = variableValuesByInstanceSelector.get(instanceKey);
     if (values) {
       for (const [dataSourceId, value] of values) {
-        const dataSource = dataSources.get(dataSourceId);
+        let dataSource = dataSources.get(dataSourceId);
+        if (dataSourceId === SYSTEM_VARIABLE_ID) {
+          dataSource = systemParameter;
+        }
         if (dataSource === undefined) {
           continue;
         }

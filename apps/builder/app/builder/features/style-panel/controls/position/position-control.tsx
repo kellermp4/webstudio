@@ -1,13 +1,18 @@
-import { propertyDescriptions } from "@webstudio-is/css-data";
+import {
+  camelCaseProperty,
+  keywordValues,
+  propertyDescriptions,
+} from "@webstudio-is/css-data";
 import {
   TupleValue,
   TupleValueItem,
   type StyleValue,
   type StyleProperty,
+  type CssProperty,
+  hyphenateProperty,
 } from "@webstudio-is/css-engine";
 import { Flex, Grid, PositionGrid } from "@webstudio-is/design-system";
 import type { ComputedStyleDecl } from "~/shared/style-object-model";
-import { styleConfigByName } from "../../shared/configs";
 import { CssValueInputContainer } from "../../shared/css-value-input";
 import {
   deleteProperty,
@@ -53,15 +58,16 @@ export const PositionControl = ({
   property,
   styleDecl,
 }: {
-  property: StyleProperty;
+  property: StyleProperty | CssProperty;
   styleDecl: ComputedStyleDecl;
 }) => {
-  const { items } = styleConfigByName(property);
   const value = toTuple(styleDecl.cascadedValue);
-  const keywords = items.map((item) => ({
-    type: "keyword" as const,
-    value: item.name,
-  }));
+  const keywords = (keywordValues[hyphenateProperty(property)] ?? []).map(
+    (value) => ({
+      type: "keyword" as const,
+      value,
+    })
+  );
 
   const setValue = setProperty(property);
 
@@ -79,7 +85,7 @@ export const PositionControl = ({
     <Flex direction="column" gap="1">
       <PropertyInlineLabel
         label="Position"
-        description={propertyDescriptions[property]}
+        description={propertyDescriptions[camelCaseProperty(property)]}
         properties={[property]}
       />
       <Flex gap="6">

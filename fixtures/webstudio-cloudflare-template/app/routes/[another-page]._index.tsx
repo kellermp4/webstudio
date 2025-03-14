@@ -151,7 +151,7 @@ export const links: LinksFunction = () => {
     result.push({
       rel: "icon",
       href: imageLoader({
-        src: `${assetBaseUrl}${favIconAsset.name}`,
+        src: `${assetBaseUrl}${favIconAsset}`,
         // width,height must be multiple of 48 https://developers.google.com/search/docs/appearance/favicon-in-search
         width: 144,
         height: 144,
@@ -166,7 +166,7 @@ export const links: LinksFunction = () => {
   for (const asset of pageFontAssets) {
     result.push({
       rel: "preload",
-      href: `${assetBaseUrl}${asset.name}`,
+      href: `${assetBaseUrl}${asset}`,
       as: "font",
       crossOrigin: "anonymous",
     });
@@ -175,7 +175,7 @@ export const links: LinksFunction = () => {
   for (const backgroundImageAsset of pageBackgroundImageAssets) {
     result.push({
       rel: "preload",
-      href: `${assetBaseUrl}${backgroundImageAsset.name}`,
+      href: `${assetBaseUrl}${backgroundImageAsset}`,
       as: "image",
     });
   }
@@ -232,10 +232,6 @@ export const action = async ({
     formData.delete(formBotFieldName);
 
     if (resource) {
-      resource.headers.push({
-        name: "Content-Type",
-        value: "application/json",
-      });
       resource.body = Object.fromEntries(formData);
     } else {
       if (contactEmail === undefined) {

@@ -1,6 +1,5 @@
 import { colord } from "colord";
-import * as csstree from "css-tree";
-import { type CssNode, generate, lexer, List } from "css-tree";
+import { type CssNode, generate, lexer, List, parse } from "css-tree";
 import warnOnce from "warn-once";
 import {
   cssWideKeywords,
@@ -12,19 +11,20 @@ import {
   type UnitValue,
   type LayerValueItem,
   type RgbValue,
-  type StyleProperty,
   type StyleValue,
   type Unit,
   type VarValue,
   type FunctionValue,
   type TupleValueItem,
+  type CssProperty,
+  type StyleProperty,
 } from "@webstudio-is/css-engine";
 import { keywordValues } from "./__generated__/keyword-values";
 import { units } from "./__generated__/units";
 
 export const cssTryParseValue = (input: string): undefined | CssNode => {
   try {
-    const ast = csstree.parse(input, { context: "value" });
+    const ast = parse(input, { context: "value" });
     return ast;
   } catch {
     return;
@@ -58,20 +58,12 @@ export const isValidDeclaration = (
   // these properties have poor support natively and in csstree
   // though rendered styles are merged as shorthand
   // so validate artifically
-  if (cssPropertyName === "white-space-collapse") {
-    return keywordValues.whiteSpaceCollapse.includes(
-      value as (typeof keywordValues.whiteSpaceCollapse)[0]
-    );
-  }
-  if (cssPropertyName === "text-wrap-mode") {
-    return keywordValues.textWrapMode.includes(
-      value as (typeof keywordValues.textWrapMode)[0]
-    );
-  }
-  if (cssPropertyName === "text-wrap-style") {
-    return keywordValues.textWrapStyle.includes(
-      value as (typeof keywordValues.textWrapStyle)[0]
-    );
+  if (
+    cssPropertyName === "white-space-collapse" ||
+    cssPropertyName === "text-wrap-mode" ||
+    cssPropertyName === "text-wrap-style"
+  ) {
+    return keywordValues[cssPropertyName].includes(value);
   }
 
   if (cssPropertyName === "transition-behavior") {
@@ -95,7 +87,6 @@ export const isValidDeclaration = (
   if (ast == null) {
     return false;
   }
-
   // scale css-proeprty accepts both number and percentage.
   // The syntax from MDN is incorrect and should be updated.
   // Here is a PR that fixes the same, but it is not merged yet.
@@ -105,7 +96,18 @@ export const isValidDeclaration = (
     return lexer.match(syntax, ast).matched !== null;
   }
 
-  const matchResult = csstree.lexer.matchProperty(cssPropertyName, ast);
+  if (
+    cssPropertyName === "transition-timing-function" ||
+    cssPropertyName === "animation-timing-function"
+  ) {
+    if (
+      lexer.match("linear( [ <number> && <percentage>{0,2} ]# )", ast).matched
+    ) {
+      return true;
+    }
+  }
+
+  const matchResult = lexer.matchProperty(cssPropertyName, ast);
 
   // allow to parse unknown properties as unparsed
   if (matchResult.error?.message.includes("Unknown property")) {
@@ -115,36 +117,36 @@ export const isValidDeclaration = (
   return matchResult.matched != null;
 };
 
-const repeatedProps = new Set<StyleProperty>([
-  "backgroundAttachment",
-  "backgroundClip",
-  "backgroundBlendMode",
-  "backgroundOrigin",
-  "backgroundPositionX",
-  "backgroundPositionY",
-  "backgroundRepeat",
-  "backgroundSize",
-  "backgroundImage",
-  "transitionProperty",
-  "transitionDuration",
-  "transitionDelay",
-  "transitionTimingFunction",
-  "transitionBehavior",
-  "boxShadow",
-  "textShadow",
+const repeatedProps = new Set<CssProperty>([
+  "background-attachment",
+  "background-clip",
+  "background-blend-mode",
+  "background-origin",
+  "background-position-x",
+  "background-position-y",
+  "background-repeat",
+  "background-size",
+  "background-image",
+  "transition-property",
+  "transition-duration",
+  "transition-delay",
+  "transition-timing-function",
+  "transition-behavior",
+  "box-shadow",
+  "text-shadow",
 ]);
 
-const tupleProps = new Set<StyleProperty>([
-  "boxShadow",
-  "textShadow",
+const tupleProps = new Set<CssProperty>([
+  "box-shadow",
+  "text-shadow",
   "scale",
   "translate",
   "rotate",
   "transform",
   "filter",
-  "backdropFilter",
-  "transformOrigin",
-  "perspectiveOrigin",
+  "backdrop-filter",
+  "transform-origin",
+  "perspective-origin",
 ]);
 
 const availableUnits = new Set<string>(Object.values(units).flat());
@@ -277,9 +279,9 @@ const parseLiteral = (
       node.name === "rotateZ" ||
       node.name === "perspective" ||
       // <easing-function>
-      node.name === "linear" ||
       node.name === "cubic-bezier" ||
       node.name === "steps"
+      // treat linear function as unparsed
     ) {
       const args: LayersValue = { type: "layers", value: [] };
       for (const arg of node.children) {
@@ -324,16 +326,17 @@ const parseLiteral = (
 };
 
 export const parseCssValue = (
-  property: StyleProperty, // Handles only long-hand values.
+  multiCaseProperty: StyleProperty | CssProperty, // Handles only long-hand values.
   input: string,
   topLevel = true
 ): StyleValue => {
+  const property = hyphenateProperty(multiCaseProperty);
   const potentialKeyword = input.toLowerCase().trim();
   if (cssWideKeywords.has(potentialKeyword)) {
     return { type: "keyword", value: potentialKeyword };
   }
 
-  if (property === "transitionProperty" && potentialKeyword === "none") {
+  if (property === "transition-property" && potentialKeyword === "none") {
     if (topLevel) {
       return { type: "keyword", value: potentialKeyword };
     } else {
@@ -397,9 +400,9 @@ export const parseCssValue = (
     const layersValue: StyleValue = {
       type: "layers",
       value: splitRepeated(nodes).map((nodes) => {
-        const value = csstree.generate({
+        const value = generate({
           type: "Value",
-          children: new csstree.List<CssNode>().fromArray(nodes),
+          children: new List<CssNode>().fromArray(nodes),
         });
         const parsed = parseCssValue(property, value, false) as LayerValueItem;
         if (parsed.type === "invalid") {
@@ -417,7 +420,7 @@ export const parseCssValue = (
 
   // csstree does not support transition-behavior
   // so check keywords manually
-  if (property === "transitionBehavior") {
+  if (property === "transition-behavior") {
     const node = ast.type === "Value" ? ast.children.first : ast;
     const keyword = parseLiteral(node, keywordValues[property]);
     if (keyword?.type === "keyword") {
@@ -426,7 +429,7 @@ export const parseCssValue = (
     return invalidValue;
   }
 
-  if (property === "fontFamily") {
+  if (property === "font-family") {
     return {
       type: "fontFamily",
       value: splitRepeated(nodes).map((nodes) => {
@@ -456,7 +459,7 @@ export const parseCssValue = (
       if (node.type === "Operator") {
         return { type: "unparsed", value: input };
       }
-      const matchedValue = parseLiteral(node, keywordValues[property as never]);
+      const matchedValue = parseLiteral(node, keywordValues[property]);
       if (matchedValue) {
         tuple.value.push(matchedValue as never);
       } else {
@@ -469,7 +472,7 @@ export const parseCssValue = (
   if (ast.type === "Value" && ast.children.size === 1) {
     // Try extract units from 1st children
     const first = ast.children.first;
-    const matchedValue = parseLiteral(first, keywordValues[property as never]);
+    const matchedValue = parseLiteral(first, keywordValues[property]);
     if (matchedValue) {
       return matchedValue;
     }

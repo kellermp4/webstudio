@@ -13,6 +13,7 @@
 
 import { nanoid } from "nanoid";
 import { useFocusWithin } from "@react-aria/interactions";
+import { useStore } from "@nanostores/react";
 import {
   Box,
   ComboboxListbox,
@@ -36,6 +37,7 @@ import {
   Text,
 } from "@webstudio-is/design-system";
 import { CheckMarkIcon, DotIcon } from "@webstudio-is/icons";
+import type { StyleSource } from "@webstudio-is/sdk";
 import {
   forwardRef,
   useState,
@@ -59,9 +61,8 @@ import { useSortable } from "./use-sortable";
 import { matchSorter } from "match-sorter";
 import { StyleSourceBadge } from "./style-source-badge";
 import { humanizeString } from "~/shared/string-utils";
-import { $definedStyles } from "../shared/model";
-import type { StyleDecl, StyleSource } from "@webstudio-is/sdk";
-import { useStore } from "@nanostores/react";
+import { $computedStyleDeclarations } from "../shared/model";
+import type { ComputedStyleDecl } from "~/shared/style-object-model";
 
 type IntermediateItem = {
   id: StyleSource["id"];
@@ -119,7 +120,7 @@ type TextFieldBaseWrapperProps<Item extends IntermediateItem> = Omit<
 // Returns true if style source has defined styles including on the states.
 const getHasStylesMap = <Item extends IntermediateItem>(
   styleSourceItems: Array<Item>,
-  definedStyles: Set<Partial<StyleDecl>>
+  computedStyleDeclarations: Array<ComputedStyleDecl>
 ) => {
   const map = new Map<Item["id"], boolean>();
   for (const item of styleSourceItems) {
@@ -127,8 +128,8 @@ const getHasStylesMap = <Item extends IntermediateItem>(
     if (item.states.length > 0) {
       map.set(item.id, true);
     }
-    for (const style of definedStyles) {
-      if (item.id === style.styleSourceId) {
+    for (const style of computedStyleDeclarations) {
+      if (item.id === style.source.styleSourceId) {
         map.set(item.id, true);
         break;
       }
@@ -177,14 +178,14 @@ const TextFieldBase: ForwardRefRenderFunction<
     internalInputRef.current?.focus();
   }, [internalInputRef]);
 
-  const definedStyles = useStore($definedStyles);
+  const computedStyleDeclarations = useStore($computedStyleDeclarations);
 
   const hasStyles = useCallback(
     (styleSourceId: string) => {
-      const hasStylesMap = getHasStylesMap(value, definedStyles);
+      const hasStylesMap = getHasStylesMap(value, computedStyleDeclarations);
       return hasStylesMap.get(styleSourceId) ?? false;
     },
-    [value, definedStyles]
+    [value, computedStyleDeclarations]
   );
 
   return (
@@ -204,28 +205,26 @@ const TextFieldBase: ForwardRefRenderFunction<
       onKeyDown={onKeyDown}
     >
       {/* We want input to be the first element in DOM so it receives the focus first */}
-      {editingItemId === undefined && (
-        <InputField
-          {...textFieldProps}
-          variant="chromeless"
-          css={{
-            fontVariantNumeric: "tabular-nums",
-            lineHeight: 1,
-            order: 1,
-            flex: 1,
-            "&:focus-within, &:hover": {
-              borderColor: "transparent",
-            },
-          }}
-          size="1"
-          value={label}
-          onClick={onClick}
-          ref={inputRef}
-          inputRef={internalInputRef}
-          spellCheck={false}
-          aria-label="New Style Source Input"
-        />
-      )}
+      <InputField
+        {...textFieldProps}
+        variant="chromeless"
+        css={{
+          fontVariantNumeric: "tabular-nums",
+          lineHeight: 1,
+          order: 1,
+          flex: 1,
+          "&:focus-within, &:hover": {
+            borderColor: "transparent",
+          },
+        }}
+        size="1"
+        value={label}
+        onClick={onClick}
+        ref={inputRef}
+        inputRef={internalInputRef}
+        spellCheck={false}
+        aria-label="New Style Source Input"
+      />
       {value.map((item) => (
         <StyleSourceControl
           key={item.id}

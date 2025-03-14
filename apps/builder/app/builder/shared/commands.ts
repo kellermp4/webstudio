@@ -36,7 +36,6 @@ import {
 import { $selectedInstancePath, selectInstance } from "~/shared/awareness";
 import { openCommandPanel } from "../features/command-panel";
 import { builderApi } from "~/shared/builder-api";
-
 import {
   findClosestNonTextualContainer,
   isInstanceDetachable,
@@ -358,6 +357,17 @@ export const { emitCommand, subscribeCommands } = createCommandsEmitter({
         setSetting(
           "stylePanelMode",
           getSetting("stylePanelMode") === "focus" ? "default" : "focus"
+        );
+      },
+      disableOnInputLikeControls: true,
+    },
+    {
+      name: "toggleStylePanelAdvancedMode",
+      defaultHotkeys: ["alt+shift+a"],
+      handler: () => {
+        setSetting(
+          "stylePanelMode",
+          getSetting("stylePanelMode") === "advanced" ? "default" : "advanced"
         );
       },
       disableOnInputLikeControls: true,

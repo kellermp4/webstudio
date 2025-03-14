@@ -6,6 +6,7 @@ import {
   type Folder,
   ROOT_FOLDER_ID,
   type Page,
+  SYSTEM_VARIABLE_ID,
 } from "@webstudio-is/sdk";
 import {
   cleanupChildRefsMutable,
@@ -26,14 +27,20 @@ import {
 } from "~/shared/nano-states";
 import { registerContainers } from "~/shared/sync";
 import { $awareness } from "~/shared/awareness";
+import { updateCurrentSystem } from "~/shared/system";
 
 setEnv("*");
 registerContainers();
 
+const initialSystem = {
+  origin: "https://undefined.wstd.work",
+  params: {},
+  search: {},
+};
+
 const createPages = () => {
   const data = createDefaultPages({
     rootInstanceId: "rootInstanceId",
-    systemDataSourceId: "systemDataSourceId",
     homePageId: "homePageId",
   });
 
@@ -64,7 +71,6 @@ const createPages = () => {
       name: id,
       path,
       rootInstanceId: "rootInstanceId",
-      systemDataSourceId: "systemDataSourceId",
       title: `"${id}"`,
     };
     return page;
@@ -107,7 +113,6 @@ describe("reparentOrphansMutable", () => {
       name: "Page",
       path: "/page",
       rootInstanceId: "rootInstanceId",
-      systemDataSourceId: "systemDataSourceId",
       title: `"Page"`,
     });
     pages.folders.push({
@@ -401,7 +406,6 @@ test("page root scope should rely on selected page", () => {
   const pages = createDefaultPages({
     rootInstanceId: "homeRootId",
     homePageId: "homePageId",
-    systemDataSourceId: "system",
   });
   pages.pages.push({
     id: "pageId",
@@ -410,7 +414,6 @@ test("page root scope should rely on selected page", () => {
     path: "/",
     title: `"My Title"`,
     meta: {},
-    systemDataSourceId: "system",
   });
   $pages.set(pages);
   $awareness.set({ pageId: "pageId" });
@@ -433,9 +436,18 @@ test("page root scope should rely on selected page", () => {
     ])
   );
   expect($pageRootScope.get()).toEqual({
-    aliases: new Map([["$ws$dataSource$2", "page variable"]]),
-    scope: { $ws$dataSource$2: "" },
-    variableValues: new Map([["2", ""]]),
+    aliases: new Map([
+      ["$ws$system", "system"],
+      ["$ws$dataSource$2", "page variable"],
+    ]),
+    scope: {
+      $ws$system: initialSystem,
+      $ws$dataSource$2: "",
+    },
+    variableValues: new Map<string, unknown>([
+      [SYSTEM_VARIABLE_ID, initialSystem],
+      ["2", ""],
+    ]),
   });
 });
 
@@ -444,7 +456,6 @@ test("page root scope should use variable and resource values", () => {
     createDefaultPages({
       rootInstanceId: "homeRootId",
       homePageId: "homePageId",
-      systemDataSourceId: "system",
     })
   );
   $awareness.set({ pageId: "homePageId" });
@@ -472,21 +483,24 @@ test("page root scope should use variable and resource values", () => {
   $resourceValues.set(new Map([["resourceId", "resource variable value"]]));
   expect($pageRootScope.get()).toEqual({
     aliases: new Map([
+      ["$ws$system", "system"],
       ["$ws$dataSource$valueVariableId", "value variable"],
       ["$ws$dataSource$resourceVariableId", "resource variable"],
     ]),
     scope: {
+      $ws$system: initialSystem,
       $ws$dataSource$resourceVariableId: "resource variable value",
       $ws$dataSource$valueVariableId: "value variable value",
     },
-    variableValues: new Map([
+    variableValues: new Map<string, unknown>([
+      [SYSTEM_VARIABLE_ID, initialSystem],
       ["valueVariableId", "value variable value"],
       ["resourceVariableId", "resource variable value"],
     ]),
   });
 });
 
-test("page root scope should prefill default system variable value", () => {
+test("page root scope should provide page system variable value", () => {
   $pages.set(
     createDefaultPages({
       rootInstanceId: "homeRootId",
@@ -525,10 +539,9 @@ test("page root scope should prefill default system variable value", () => {
       ],
     ]),
   });
-
-  $dataSourceVariables.set(
-    new Map([["systemId", { params: { slug: "my-post" }, search: {} }]])
-  );
+  updateCurrentSystem({
+    params: { slug: "my-post" },
+  });
   expect($pageRootScope.get()).toEqual({
     aliases: new Map([["$ws$dataSource$systemId", "system"]]),
     scope: {

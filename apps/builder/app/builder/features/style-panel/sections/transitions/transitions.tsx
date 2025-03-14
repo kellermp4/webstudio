@@ -5,11 +5,11 @@ import {
   SectionTitleButton,
   Tooltip,
 } from "@webstudio-is/design-system";
-import { properties } from "@webstudio-is/css-data";
+import { propertiesData } from "@webstudio-is/css-data";
 import {
   toValue,
+  type CssProperty,
   type LayerValueItem,
-  type StyleProperty,
 } from "@webstudio-is/css-engine";
 import {
   CollapsibleSectionRoot,
@@ -30,12 +30,12 @@ import { TransitionContent } from "./transition-content";
 import { parseCssFragment } from "../../shared/css-fragment";
 
 const transitionLongHandProperties = [
-  "transitionProperty",
-  "transitionTimingFunction",
-  "transitionDelay",
-  "transitionDuration",
-  "transitionBehavior",
-] as const satisfies StyleProperty[];
+  "transition-property",
+  "transition-timing-function",
+  "transition-delay",
+  "transition-duration",
+  "transition-behavior",
+] as const satisfies CssProperty[];
 
 export { transitionLongHandProperties as properties };
 
@@ -56,7 +56,7 @@ const getTransitionLayers = (
   const definedLayers: LayerValueItem[] =
     currentPropertyValue?.type === "layers"
       ? currentPropertyValue.value
-      : [properties[property].initial];
+      : [propertiesData[property].initial as LayerValueItem];
   return repeatUntil(definedLayers, transitionPropertiesCount);
 };
 
@@ -68,19 +68,19 @@ const getLayerLabel = ({
   index: number;
 }) => {
   // show label without hidden replacement
-  const propertyLayer = getTransitionLayers(styles, "transitionProperty")[
+  const propertyLayer = getTransitionLayers(styles, "transition-property")[
     index
   ];
   const property = humanizeString(toValue({ ...propertyLayer, hidden: false }));
   const duration = toValue(
-    getTransitionLayers(styles, "transitionDuration")[index]
+    getTransitionLayers(styles, "transition-duration")[index]
   );
   const timingFunctionLayer = getTransitionLayers(
     styles,
-    "transitionTimingFunction"
+    "transition-timing-function"
   )[index];
   const timingFunction = toValue({ ...timingFunctionLayer, hidden: false });
-  const delay = toValue(getTransitionLayers(styles, "transitionDelay")[index]);
+  const delay = toValue(getTransitionLayers(styles, "transition-delay")[index]);
   return `${property}: ${duration} ${timingFunction} ${delay}`;
 };
 

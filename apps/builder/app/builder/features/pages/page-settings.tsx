@@ -27,9 +27,7 @@ import {
   ROOT_FOLDER_ID,
   findParentFolderByChildId,
   ProjectNewRedirectPath,
-  DataSource,
   isLiteralExpression,
-  type System,
   documentTypes,
   isRootFolder,
 } from "@webstudio-is/sdk";
@@ -73,8 +71,6 @@ import {
   $assets,
   $instances,
   $pages,
-  $dataSources,
-  $dataSourceVariables,
   $publishedOrigin,
   $project,
   $userPlanFeatures,
@@ -112,6 +108,7 @@ import { useUnmount } from "~/shared/hook-utils/use-mount";
 import { Card } from "../marketplace/card";
 import { selectInstance } from "~/shared/awareness";
 import { computeExpression } from "~/shared/data-variables";
+import { $currentSystem } from "~/shared/system";
 
 const fieldDefaultValues = {
   name: "Untitled",
@@ -579,7 +576,7 @@ const LanguageField = ({
   );
 };
 
-const usePageUrl = (values: Values, systemDataSourceId?: DataSource["id"]) => {
+const usePageUrl = (values: Values) => {
   const pages = useStore($pages);
   const foldersPath =
     pages === undefined ? "" : getPagePath(values.parentFolderId, pages);
@@ -588,16 +585,10 @@ const usePageUrl = (values: Values, systemDataSourceId?: DataSource["id"]) => {
     .join("/")
     .replace(/\/+/g, "/");
 
-  const dataSourceVariables = useStore($dataSourceVariables);
-  const storedSystem =
-    systemDataSourceId === undefined
-      ? undefined
-      : (dataSourceVariables.get(systemDataSourceId) as System);
-  const pathParams = storedSystem?.params ?? {};
-
+  const system = useStore($currentSystem);
   const publishedOrigin = useStore($publishedOrigin);
   const tokens = tokenizePathnamePattern(path);
-  const compiledPath = compilePathnamePattern(tokens, pathParams);
+  const compiledPath = compilePathnamePattern(tokens, system.params);
   return `${publishedOrigin}${compiledPath}`;
 };
 
@@ -705,13 +696,11 @@ const MarketplaceSection = ({
 };
 
 const FormFields = ({
-  systemDataSourceId,
   autoSelect,
   errors,
   values,
   onChange,
 }: {
-  systemDataSourceId?: DataSource["id"];
   autoSelect?: boolean;
   errors: Errors;
   values: Values;
@@ -724,7 +713,7 @@ const FormFields = ({
   const { allowDynamicData } = useStore($userPlanFeatures);
   const { variableValues, scope, aliases } = useStore($pageRootScope);
 
-  const pageUrl = usePageUrl(values, systemDataSourceId);
+  const pageUrl = usePageUrl(values);
 
   if (pages === undefined) {
     return;
@@ -1375,36 +1364,26 @@ const NewPageSettingsView = ({
 
 const createPage = (pageId: Page["id"], values: Values) => {
   serverSyncStore.createTransaction(
-    [$pages, $instances, $dataSources],
-    (pages, instances, dataSources) => {
+    [$pages, $instances],
+    (pages, instances) => {
       if (pages === undefined) {
         return;
       }
       const rootInstanceId = nanoid();
-      const systemDataSourceId = nanoid();
       pages.pages.push({
         id: pageId,
         name: values.name,
         path: values.path,
         title: values.title,
         rootInstanceId,
-        systemDataSourceId,
         meta: {},
       });
-
       instances.set(rootInstanceId, {
         type: "instance",
         id: rootInstanceId,
         component: "Body",
         children: [],
       });
-      dataSources.set(systemDataSourceId, {
-        id: systemDataSourceId,
-        scopeInstanceId: rootInstanceId,
-        name: "system",
-        type: "parameter",
-      });
-
       registerFolderChildMutable(pages.folders, pageId, values.parentFolderId);
       selectInstance(undefined);
     }
@@ -1652,16 +1631,20 @@ export const PageSettings = ({
       onDuplicate={() => {
         const newPageId = duplicatePage(pageId);
         if (newPageId !== undefined) {
-          onDuplicate(newPageId);
+          // In `canvas.tsx`, within `subscribeStyles`, we use `requestAnimationFrame` (RAF) for style recalculation.
+          // After `duplicatePage`, styles are not yet recalculated.
+          // To ensure they are properly updated, we use double RAF.
+          requestAnimationFrame(() => {
+            // At this tick styles are updating
+            requestAnimationFrame(() => {
+              // At this tick styles are updated
+              onDuplicate(newPageId);
+            });
+          });
         }
       }}
     >
-      <FormFields
-        systemDataSourceId={page.systemDataSourceId}
-        errors={errors}
-        values={values}
-        onChange={handleChange}
-      />
+      <FormFields errors={errors} values={values} onChange={handleChange} />
     </PageSettingsView>
   );
 };
